@@ -1,3 +1,0 @@
-"0","raton_ejemplo <- sample(dominancia_machos$dummy_id, 1)"
-"0","raton_ejemplo_data <- dominancia_machos %>% filter(dummy_id == raton_ejemplo)"
-"0","head(raton_ejemplo_data)"

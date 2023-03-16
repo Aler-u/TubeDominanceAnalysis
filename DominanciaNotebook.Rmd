@@ -7,7 +7,7 @@ output: html_notebook
 library(tidyverse) #Para leer datos y para manipulacion de datos en general
 library(readxl) #Los archivos con los datos suelen estar en formato de Excel asi que usamos esta libreria para leerlos
 library(bayesrules) #Tiene algunas funciones que nos van a resultar utiles para trabajar con distribuciones conjugadas y graficar
-
+library(brms)
 set.seed(1234)
 ```
 
@@ -20,7 +20,9 @@ La logica basica del test es que dos ratones se encuentran y hay 3 desenlaces po
 Si hay 3 desenlaces posibles entonces el proceso puede modelarse como un proceso multinomial. Sin embargo data la estructura de los datos vamos a modelarlo como un proceso binomial ignorando los empates. Despues vamos a volver al modelo multinomial. 
 
 ```{r}
-dominancia_machos <- read_xlsx('R_TD_M.xlsx')
+dominancia_machos <- read_xlsx('Data/R_TD_M.xlsx')
+dominancia_machos <- dominancia_machos %>% mutate(geno = factor(geno), 
+                                                  geno = fct_relevel(geno, 'WT','KO'))
 ```
 
 # Preprocesamiento
@@ -36,6 +38,135 @@ La resta tendria que dar 0 pero justamente lo que ocurre es que tenemos mas fila
 ```{r}
 dominancia_machos <- dominancia_machos %>% mutate(dummy_id = 1:n())
 ```
+
+# Abordaje tradicional
+
+Tradicionalmente lo que se suele hacer es sumar la cantidad de victorias $wins$ y dividirlo por la cantidad de encuentros $n$. Entonces si un animal tiene 5 _housemates_, hay $n = 4$ encuentros por dia. Si el experimento se repite por 7 dias la puntuacion final de ese animal es $\frac{\Sigma wins_t}{7n}$ donde $wins_t$ son la cantidad de victorias del animal en el dia $t$. 
+
+```{r}
+ggplot(
+  data = dominancia_machos,
+  aes(x = wins_t_di)
+) +
+  geom_density(aes(fill = geno), alpha = 0.5, bw = 0.1) +
+  stat_density(geom = 'line', bw = 0.1, color = 'red') +
+  geom_rug(aes(color = geno))
+
+ggplot(
+  data = dominancia_machos,
+  aes(x = wins_t_di, color = geno)
+) +
+  geom_freqpoly() +
+  geom_rug()
+ggplot(
+  data = dominancia_machos,
+  aes(x = wins_t_di, fill = geno)
+) +
+  geom_dotplot(alpha = 0.5)
+```
+
+
+Para analizar estos resultados se suele emplear un modelo frecuentista clasico asi que vamos a representarlo con una regresion lineal simple.
+
+```{r}
+modelo_tradicional_simple <- lm(
+  wins_t_di ~ geno, 
+  data = dominancia_machos
+)
+```
+
+Primero vemos el resumen de resultados del modelo.
+
+```{r}
+summary(modelo_tradicional_simple)
+```
+
+Despues graficamos la estimacion para los dos grupos que hace el modelo.
+
+```{r}
+sjPlot::plot_model(modelo_tradicional_simple, type = 'pred', terms = 'geno', ci.lvl = 0.95) + theme_minimal() + labs(title = 'Predicted values for the proportion of wins by genotype', y = 'Total wins proportion', x = 'Genotype')
+```
+
+Por ultimo chequeamos algunos diagnosticos.
+
+```{r}
+performance::check_model(modelo_tradicional_simple, check = c("pp_check","qq"))
+```
+
+# Modelo beta
+
+```{r}
+beta_datos <- dominancia_machos %>% mutate(
+  wins_t_di = ifelse(wins_t_di > 0 , wins_t_di, wins_t_di + 0.01),
+  wins_t_di = ifelse(wins_t_di < 1, wins_t_di, wins_t_di - 0.01)
+)
+```
+
+
+## Priors
+
+```{r}
+get_prior(wins_t_di ~ geno, data = beta_datos, family = Beta())
+```
+
+### Prior predictive check
+
+```{r}
+table(dominancia_machos$geno)
+```
+
+
+```{r}
+prior_predictive_fun <- function(){
+  mu_value <- LaplacesDemon::rstp(1, 0, 2.5, 3)
+  phi_value <- rgamma(1, 0.1, 0.1)
+  beta_efecto <- rnorm(1, 0, 0.5)
+  
+  wt_sample <- extraDistr::rprop(17,
+                                 exp(phi_value), 
+                                 plogis(mu_value)
+                                 )
+  
+  ko_sample <- extraDistr::rprop(18,
+                                 exp(phi_value),
+                                 plogis(mu_value + beta_efecto)
+                                 )
+  
+  c(wt_sample,ko_sample)
+}
+```
+
+
+```{r}
+replicate(20, prior_predictive_fun()) %>% as_tibble() %>% pivot_longer(cols = everything()) %>%
+  ggplot(
+    aes(x = value)
+  ) +
+  geom_density(data = dominancia_machos, aes(x = wins_t_di), color = 'red') +
+  stat_density(aes(group = name), geom = 'line')
+
+ggplot(
+  data = dominancia_machos,
+  aes(x = wins_t_di)
+) +
+  geom_density()
+
+```
+
+
+
+
+
+```{r}
+beta_priors <- set_prior(
+  'normal(0,2)', class = 'b',
+  'normal(0,2)', class = 'Intercept'
+)
+beta_prior_model <- brm(wins_t_di ~ geno, data = beta_datos, prior = beta_priors,
+                  family = Beta(), sample_prior = 'only')
+```
+
+
 
 # Modelo Binomial
 
