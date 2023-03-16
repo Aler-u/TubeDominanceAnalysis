@@ -1,0 +1,7 @@
+"0","beta_individual <- beta_individual %>%"
+"0","  mutate("
+"0","    posterior_alfa = 2 + suma,"
+"0","    posterior_beta = 2 + n-suma"
+"0","  )"
+"0",""
+"0","head(beta_individual)"

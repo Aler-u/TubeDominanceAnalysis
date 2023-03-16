@@ -1,0 +1,8 @@
+"0","beta_individual <- dominancia_machos %>% group_by(cage) %>% mutate(cant_intentos = n() - 1) %>% group_by(dummy_id) %>%"
+"0","  summarise("
+"0","    suma = rowSums(across(matches('d\\d_wins'))),"
+"0","    n = cant_intentos*dominancia_machos %>% select(matches('d\\d_wins')) |> ncol(),"
+"0","    geno = geno"
+"0","  )"
+"0",""
+"0","head(beta_individual)"

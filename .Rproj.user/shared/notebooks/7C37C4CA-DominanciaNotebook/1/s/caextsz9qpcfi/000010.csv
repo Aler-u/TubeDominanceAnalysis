@@ -1,0 +1,5 @@
+"0","dominancia_machos %>% count(cage) %>% filter(cage == 6) %>% pull(n)"
+"1","[1]"
+"1"," 5"
+"1","
+"

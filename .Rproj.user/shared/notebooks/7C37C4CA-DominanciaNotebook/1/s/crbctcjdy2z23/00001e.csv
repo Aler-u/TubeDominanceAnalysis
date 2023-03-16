@@ -1,0 +1,6 @@
+"0","summarize_beta_binomial("
+"0","   2, #Prior"
+"0","   2, #Prior"
+"0","   y = raton_ejemplo_data %>% pull(d1_wins),"
+"0","   n = raton_ejemplo_data %>% pull(cant_intentos)"
+"0",")"

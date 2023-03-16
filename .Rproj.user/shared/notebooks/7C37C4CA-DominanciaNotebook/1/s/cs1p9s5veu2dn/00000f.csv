@@ -1,0 +1,5 @@
+"0","library(tidyverse) #Para leer datos y para manipulacion de datos en general"
+"0","library(readxl) #Los archivos con los datos suelen estar en formato de Excel asi que usamos esta libreria para leerlos"
+"0","library(bayesrules) #Tiene algunas funciones que nos van a resultar utiles para trabajar con distribuciones conjugadas y graficar"
+"0",""
+"0","set.seed(1234)"
